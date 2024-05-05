@@ -51,29 +51,23 @@ localparam INIT = 3'd0;
 localparam COMPUTE_1 = 3'd1;
 localparam COMPUTE_2 = 3'd2;
 localparam COMPUTE_3 = 3'd3;
-localparam COMPUTE_4 = 3'd4;
-localparam COMPUTE_5 = 3'd5;
-localparam COMPUTE_6 = 3'd6;
 localparam FINISH = 3'd7;
 
 // REGS AND WIRES DECLARATIONS
 
 // State machine registers
-reg [2:0] state, next_state;
+reg [3-1:0] state, next_state;
 
-// Regs that store operands, intermediate results and final result
-reg [2*N_BITS-1:0] w;
+reg [(2*N_BITS)-1:0] w;
 reg [2*(N_BITS+1)-1:0] y;
-reg [2*N_BITS-1:0] z;
-reg [N_BITS-1:0] result;
+reg [(2*N_BITS)-1:0] z;
 reg [256-1:0] karatsuba_num1;
 reg [256-1:0] karatsuba_num2;
 
-// Wires used in calculations
-wire [2*256-1:0] karatsuba_product;
 wire [(N_BITS+1)-1:0] x1;
 wire [(N_BITS+1)-1:0] x2;
 wire [(N_BITS+1)-1:0] x3;
+wire [2*256-1:0] karatsuba_product;
 
 // Synchronization of the state machine
 always @ (posedge clk or posedge rst) begin
@@ -93,12 +87,6 @@ always @ (*) begin
 		COMPUTE_2:
 			next_state <= COMPUTE_3;
 		COMPUTE_3:
-			next_state <= COMPUTE_4;
-		COMPUTE_4:
-			next_state <= COMPUTE_5;
-		COMPUTE_5:
-			next_state <= COMPUTE_6;
-		COMPUTE_6:
 			next_state <= FINISH;
 		FINISH:
 			next_state <= state;
@@ -113,48 +101,38 @@ always @(posedge clk) begin
 	case (state)
 		INIT: begin
 			done <= 1'b0;
-			result <= 0;
-			karatsuba_num1 <= {2'b00, num1};
-			karatsuba_num2 <= {2'b00, num2};
+			karatsuba_num1 <= {2'b0, num1};
+			karatsuba_num2 <= {2'b0, num2};
 		end
 		FINISH: begin
 			done <= 1'b1;
 		end
 		COMPUTE_1: begin
 			w <= karatsuba_product[2*N_BITS-1:0];
-		// $strobe("[galois_mult_karatsuba.v] w=%h", w);
+			karatsuba_num1 <= {1'b0, karatsuba_product[2*N_BITS-1:N_BITS-1]};
+			karatsuba_num2 <= {1'b0, R};
+			// $strobe("[galois_mult_karatsuba.v] w=%h", w);
 		end
 		COMPUTE_2: begin
-			karatsuba_num1 <= {2'b0, w[2*N_BITS-1:N_BITS-1]};
-			karatsuba_num2 <= {2'b0, R};
+			y <= karatsuba_product[2*(N_BITS+1)-1:0];
+			karatsuba_num1 <= {2'b0, karatsuba_product[2*N_BITS:N_BITS+1]};
+			karatsuba_num2 <= {2'b0, PRIME_MODULUS};
+			// $strobe("[galois_mult_karatsuba.v] y=%h", y);
 		end
 		COMPUTE_3: begin
-			y <= karatsuba_product[2*(N_BITS+1)-1:0];
-		// $strobe("[galois_mult_karatsuba.v] y=%h", y);
-		end
-		COMPUTE_4: begin
-			karatsuba_num1 <= {2'b00, y[2*N_BITS:N_BITS+1]};
-			karatsuba_num2 <= {2'b00, PRIME_MODULUS};
-		end
-		COMPUTE_5: begin
 			z <= karatsuba_product[2*N_BITS-1:0];
-		// $strobe("[galois_mult_karatsuba.v] z=%h", z);
-		end
-		COMPUTE_6: begin
-			result[N_BITS-1:0] <= x3[N_BITS-1:0];
-		// $strobe("[galois_mult_karatsuba.v] x1=%h", x1);
-		// $strobe("[galois_mult_karatsuba.v] x2=%h", x2);
-		// $strobe("[galois_mult_karatsuba.v] x3=%h", x3);
-		// $strobe("[galois_mult_karatsuba.v] result=%h", result);
+			// $strobe("[galois_mult_karatsuba.v] z=%h", z);
+			// $strobe("[galois_mult_karatsuba.v] x1=%h", x1);
+			// $strobe("[galois_mult_karatsuba.v] x2=%h", x2);
+			// $strobe("[galois_mult_karatsuba.v] x3=%h", x3);
 		end
 	endcase
 end
 
-// Output result assignment
-assign product = result;
 assign x1 = w[N_BITS:0] - z[N_BITS:0];
 assign x2 = (x1 >= {1'b0, PRIME_MODULUS}) ? x1 - {1'b0, PRIME_MODULUS} : x1;
 assign x3 = (x2 >= {1'b0, PRIME_MODULUS}) ? x2 - {1'b0, PRIME_MODULUS} : x2;
+assign product = x3[N_BITS-1:0];
 
 karatsuba_mult #(
 	.N_BITS(256)

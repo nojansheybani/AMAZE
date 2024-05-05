@@ -39,7 +39,7 @@ logic done;
 // Add module instantiation.
 galois_mult #(
 	.N_BITS(N_BITS),
-	.GALOIS_MULT_METHOD("peasant")
+	.GALOIS_MULT_METHOD("barrett")
 ) GALOIS_MULT (
 	.clk(clk),
 	.rst(rst),

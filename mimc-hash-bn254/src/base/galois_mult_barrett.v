@@ -44,7 +44,6 @@ localparam INIT = 3'd1;
 localparam COMPUTE_1 = 3'd2;
 localparam COMPUTE_2 = 3'd3;
 localparam COMPUTE_3 = 3'd4;
-localparam COMPUTE_4 = 3'd5;
 localparam FINISH = 3'd7;
 
 // State machine registers
@@ -53,7 +52,6 @@ reg [3-1:0] state, next_state;
 reg [(2*N_BITS)-1:0] w;
 reg [2*(N_BITS+1)-1:0] y;
 reg [(2*N_BITS)-1:0] z;
-reg [N_BITS-1:0] result;
 
 wire [(N_BITS+1)-1:0] x1;
 wire [(N_BITS+1)-1:0] x2;
@@ -77,8 +75,6 @@ always @ (*) begin
 		COMPUTE_2:
 			next_state <= COMPUTE_3;
 		COMPUTE_3:
-			next_state <= COMPUTE_4;
-		COMPUTE_4:
 			next_state <= FINISH;
 		FINISH:
 			next_state <= state;
@@ -93,7 +89,6 @@ always @(posedge clk) begin
 	case (state)
 		INIT: begin
 			done <= 1'b0;
-			result <= 0;
 		end
 		FINISH: begin
 			done <= 1'b1;
@@ -109,9 +104,6 @@ always @(posedge clk) begin
 		COMPUTE_3: begin
 			z <= y[2*N_BITS:N_BITS+1] * PRIME_MODULUS;
 			// $strobe("[galois_mult_barrett.v] z=%h", z);
-		end
-		COMPUTE_4: begin
-			result[N_BITS-1:0] <= x3[N_BITS-1:0];
 			// $strobe("[galois_mult_barrett.v] x1=%h", x1);
 			// $strobe("[galois_mult_barrett.v] x2=%h", x2);
 			// $strobe("[galois_mult_barrett.v] x3=%h", x3);
@@ -120,9 +112,9 @@ always @(posedge clk) begin
 	endcase
 end
 
-assign product = result;
 assign x1 = w[N_BITS:0] - z[N_BITS:0];
 assign x2 = (x1 >= {1'b0, PRIME_MODULUS}) ? x1 - {1'b0, PRIME_MODULUS} : x1;
 assign x3 = (x2 >= {1'b0, PRIME_MODULUS}) ? x2 - {1'b0, PRIME_MODULUS} : x2;
+assign product = x3[N_BITS-1:0];
 
 endmodule

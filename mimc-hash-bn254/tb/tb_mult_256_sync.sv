@@ -56,19 +56,26 @@ initial begin
 end
 
 initial begin
+	#1;
+
 	$display("Start (all):%d", $time);
+
 	a = test_in1;
 	b = test_in2;
 	$display("Start (1):%d", $time);
+
 	#2
+
 	a = 1;
 	b = test_in2;
 	$display("Start (2):%d", $time);
-	#2
+
+	#2;
+
 	a = test_in1;
 	b = 1;
 	$display("Start (3):%d", $time);
-	#6
+
 	$display("End (1):%d", $time);
 	$display("Result (1)=%h", c);
 	$display("Expected Result (1)=%h", test_out);
@@ -76,7 +83,9 @@ initial begin
 		$display("Test Failed");
 		$stop;
 	end
+
 	#2
+
 	$display("End (2):%d", $time);
 	$display("Result (2)=%h", c);
 	$display("Expected Result (2)=%h", test_in2);
@@ -84,7 +93,9 @@ initial begin
 		$display("Test Failed");
 		$stop;
 	end
-	#2
+
+	#2;
+
 	$display("End (3):%d", $time);
 	$display("Result (3)=%h", c);
 	$display("Expected Result (3)=%h", test_in1);
@@ -92,6 +103,7 @@ initial begin
 		$display("Test Failed");
 		$stop;
 	end
+
 	$display("End (all):%d", $time);
 	$display("Test Passed");
 	$stop;

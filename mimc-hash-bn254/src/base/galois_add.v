@@ -29,10 +29,11 @@ module galois_add #(
 	output [N_BITS-1:0] sum
 );
 
-// Calculate output as sum of two inputs. If output >= modulus, subtract modulus from output.
-wire [N_BITS:0] temp;
+wire [(N_BITS+1)-1:0] temp1;
+wire signed [(N_BITS+1)-1:0] temp2;
 
-assign temp = num1 + num2;
-assign sum = (temp >= PRIME_MODULUS) ? temp - PRIME_MODULUS : temp;
+assign temp1 = num1 + num2;
+assign temp2 = temp1 - PRIME_MODULUS;
+assign sum = temp2 >= 0 ? temp2[N_BITS-1:0] : temp1[N_BITS-1:0];
 
 endmodule

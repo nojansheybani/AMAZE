@@ -19,30 +19,29 @@
 //  THE SOFTWARE.
 
 
-// Test bench of galois_mult_barrett_sync.v module
-module tb_galois_mult_barrett_sync ();
+// Test bench of galois_pow_7_sync_v3.v module
+module tb_galois_pow_7_sync_v3 ();
 
 localparam N_BITS = 254;
 
 logic clk;
 logic [N_BITS-1:0] a;
-logic [N_BITS-1:0] b;
 logic [N_BITS-1:0] c;
-logic ready;
 
-`include "galois_mult_test_cases.sv"
+wire d;
+
+`include "galois_pow_7_test_cases.sv"
 
 // Module to be tested.
-galois_mult_barrett_sync MULT (
+galois_pow_7_sync_v3 POW (
 	.clk(clk),
-	.num1(a),
-	.num2(b),
-	.product(c),
-	.ready(ready)
+	.base(a),
+	.result(c),
+	.ready(d)
 );
 
 // Module I/O timing information.
-localparam MULT_LATENCY = 3; // Clock cylces
+localparam MULT_LATENCY = 13; // Clock cylces
 
 //-----------------------------------------------------------//
 //
@@ -64,17 +63,20 @@ initial begin
 
 	$display("Start (all):%d", $time);
 
-	a = test_in1;
-	b = test_in2;
+	a = test_in;
 	$display("Start (1):%d", $time);
 
 	#2;
 
-	a = 1;
-	b = test_in2;
+	a = 'b1;
 	$display("Start (2):%d", $time);
 
-	#(2*(3*MULT_LATENCY-1));
+	#2;
+
+	a = 'b0;
+	$display("Start (3):%d", $time);
+
+	#(2*(3*MULT_LATENCY-2));
 
 	$display("End (1):%d", $time);
 	$display("Result (1)=%h", c);
@@ -88,8 +90,18 @@ initial begin
 
 	$display("End (2):%d", $time);
 	$display("Result (2)=%h", c);
-	$display("Expected Result (2)=%h", test_in2);
-	if (c != test_in2) begin
+	$display("Expected Result (2)=%h", {{(N_BITS-1){1'b0}}, 1'b1});
+	if (c != {{(N_BITS-1){1'b0}}, 1'b1}) begin
+		$display("Test Failed");
+		$stop;
+	end
+
+	#2;
+
+	$display("End (3):%d", $time);
+	$display("Result (3)=%h", c);
+	$display("Expected Result (3)=%h", {N_BITS{1'b0}});
+	if (c != {N_BITS{1'b0}}) begin
 		$display("Test Failed");
 		$stop;
 	end

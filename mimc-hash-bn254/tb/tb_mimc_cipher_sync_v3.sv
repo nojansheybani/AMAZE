@@ -19,8 +19,8 @@
 //  THE SOFTWARE.
 
 
-// Test bench of galois_mult_barrett_sync.v module
-module tb_galois_mult_barrett_sync ();
+// Test bench of mimc_cipher_sync_v3.v module
+module tb_mimc_cipher_sync_v3 ();
 
 localparam N_BITS = 254;
 
@@ -28,21 +28,19 @@ logic clk;
 logic [N_BITS-1:0] a;
 logic [N_BITS-1:0] b;
 logic [N_BITS-1:0] c;
-logic ready;
 
-`include "galois_mult_test_cases.sv"
+`include "mimc_cipher_test_cases.sv"
 
 // Module to be tested.
-galois_mult_barrett_sync MULT (
+mimc_cipher_sync_v3 MIMC_CIPHER (
 	.clk(clk),
-	.num1(a),
-	.num2(b),
-	.product(c),
-	.ready(ready)
+	.in(a),
+	.key(b),
+	.out(c)
 );
 
 // Module I/O timing information.
-localparam MULT_LATENCY = 3; // Clock cylces
+localparam MIMC_CIPHER_ROUND_LATENCY = 39 + 1; // Clock cylces
 
 //-----------------------------------------------------------//
 //
@@ -60,36 +58,50 @@ initial begin
 end
 
 initial begin
-	#1;
-
 	$display("Start (all):%d", $time);
 
-	a = test_in1;
-	b = test_in2;
+	a = test1_in;
+    b = test1_key;
 	$display("Start (1):%d", $time);
 
 	#2;
 
-	a = 1;
-	b = test_in2;
+	a = test2_in;
+    b = test2_key;
 	$display("Start (2):%d", $time);
 
-	#(2*(3*MULT_LATENCY-1));
+	#2;
+
+	a = test3_in;
+    b = test3_key;
+	$display("Start (3):%d", $time);
+
+	#(2*(91*MIMC_CIPHER_ROUND_LATENCY - 2));
 
 	$display("End (1):%d", $time);
 	$display("Result (1)=%h", c);
-	$display("Expected Result (1)=%h", test_out);
-	if (c != test_out) begin
+	$display("Expected Result (1)=%h", test1_out);
+	if (c != test1_out) begin
+		$display("Test Failed");
+		$stop;
+	end
+
+    #2;
+
+	$display("End (2):%d", $time);
+	$display("Result (2)=%h", c);
+	$display("Expected Result (2)=%h", test2_out);
+	if (c != test2_out) begin
 		$display("Test Failed");
 		$stop;
 	end
 
 	#2;
 
-	$display("End (2):%d", $time);
-	$display("Result (2)=%h", c);
-	$display("Expected Result (2)=%h", test_in2);
-	if (c != test_in2) begin
+	$display("End (3):%d", $time);
+	$display("Result (3)=%h", c);
+	$display("Expected Result (3)=%h", test3_out);
+	if (c != test3_out) begin
 		$display("Test Failed");
 		$stop;
 	end

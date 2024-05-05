@@ -72,9 +72,9 @@ initial begin
 		en = 1'b0;
 		rst = 1'b1;
 	#1 // Test of one round of MiMC cipher
-		a = test_in;
-		b = test_round_constant;
-		c = test_key;
+		a = test1_in;
+		b = test1_round_constant;
+		c = test1_key;
 	#1
 		$display("Start:%d", $time);
 		rst = 1'b0;
@@ -82,8 +82,8 @@ initial begin
 	wait(done);
 	$display("End:%d", $time);
 	$display("Result=%h", d);
-	$display("Expected Result=%h", test_out);
-	if (d == test_out)
+	$display("Expected Result=%h", test1_out);
+	if (d == test1_out)
 		$display("Test Passed");
 	else
 		$display("Test Failed");

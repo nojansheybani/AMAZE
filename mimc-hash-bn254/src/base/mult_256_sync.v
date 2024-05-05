@@ -20,9 +20,13 @@
 
 
 // Module that performs multiplication between two 256-bit unsigned integers.
+
 // Pipelined design: supports multiple in-flight computations.
-//     - Latency: 5 clock cycles
+//     - Latency: 3 clock cycles (including the cycle in which inputs are injected).
+//     - Pipeline length: 3 clock cycles.
 //     - Accepts new request in every clock cycle.
+
+// WARNING: This code is optimized for devices having 27-by-N-bit DSP units, where N >= 27.
 
 module mult_256_sync (
     input clk,
@@ -31,79 +35,121 @@ module mult_256_sync (
     output [2*256-1:0] product
 );
 
-reg [2*256-1:0] accum [0:31-1];
+reg [2*256-1:0] partial_product_lo [0:10-1];
+reg [2*256-1:0] partial_product_hi [0:10-1];
+
+wire [2*256-1:0] sum_tree_lo [0:11-1];
+wire [2*256-1:0] sum_tree_hi [0:11-1];
+
+reg [256-1:0] num1_saved;
+reg [256-1:0] num2_saved;
+reg [2*256-1:0] sum_tree_lo_saved [0:2-1];
+
+assign sum_tree_lo[6] = partial_product_lo[0] + (partial_product_lo[1] << (27*(2**0)));
+assign sum_tree_lo[7] = partial_product_lo[2] + (partial_product_lo[3] << (27*(2**0)));
+assign sum_tree_lo[8] = partial_product_lo[4] + (partial_product_lo[5] << (27*(2**0)));
+assign sum_tree_lo[9] = partial_product_lo[6] + (partial_product_lo[7] << (27*(2**0)));
+assign sum_tree_lo[10] = partial_product_lo[8] + (partial_product_lo[9] << (27*(2**0)));
+
+assign sum_tree_lo[3] = sum_tree_lo[6] + (sum_tree_lo[7] << (27*(2**1)));
+assign sum_tree_lo[4] = sum_tree_lo[8] + (sum_tree_lo[9] << (27*(2**1)));
+assign sum_tree_lo[5] = sum_tree_lo[10];
+
+assign sum_tree_lo[1] = sum_tree_lo[3] + (sum_tree_lo[4] << (27*(2**2)));
+assign sum_tree_lo[2] = sum_tree_lo[5];
+
+assign sum_tree_lo[0] = sum_tree_lo[1] + (sum_tree_lo[2] << (27*(2**3)));
+
+assign sum_tree_hi[6] = partial_product_hi[0] + (partial_product_hi[1] << (27*(2**0)));
+assign sum_tree_hi[7] = partial_product_hi[2] + (partial_product_hi[3] << (27*(2**0)));
+assign sum_tree_hi[8] = partial_product_hi[4] + (partial_product_hi[5] << (27*(2**0)));
+assign sum_tree_hi[9] = partial_product_hi[6] + (partial_product_hi[7] << (27*(2**0)));
+assign sum_tree_hi[10] = partial_product_hi[8] + (partial_product_hi[9] << (27*(2**0)));
+
+assign sum_tree_hi[3] = sum_tree_hi[6] + (sum_tree_hi[7] << (27*(2**1)));
+assign sum_tree_hi[4] = sum_tree_hi[8] + (sum_tree_hi[9] << (27*(2**1)));
+assign sum_tree_hi[5] = sum_tree_hi[10];
+
+assign sum_tree_hi[1] = sum_tree_hi[3] + (sum_tree_hi[4] << (27*(2**2)));
+assign sum_tree_hi[2] = sum_tree_hi[5];
+
+assign sum_tree_hi[0] = sum_tree_hi[1] + (sum_tree_hi[2] << (27*(2**3)));
+
+assign product = sum_tree_lo_saved[0] + (sum_tree_hi[0] << 128);
 
 // Operation logic
 always @(posedge clk) begin
-    accum[15] <= num1 * num2[16*0 +: 16];
-    accum[16] <= num1 * num2[16*1 +: 16];
-    accum[17] <= num1 * num2[16*2 +: 16];
-    accum[18] <= num1 * num2[16*3 +: 16];
-    accum[19] <= num1 * num2[16*4 +: 16];
-    accum[20] <= num1 * num2[16*5 +: 16];
-    accum[21] <= num1 * num2[16*6 +: 16];
-    accum[22] <= num1 * num2[16*7 +: 16];
-    accum[23] <= num1 * num2[16*8 +: 16];
-    accum[24] <= num1 * num2[16*9 +: 16];
-    accum[25] <= num1 * num2[16*10 +: 16];
-    accum[26] <= num1 * num2[16*11 +: 16];
-    accum[27] <= num1 * num2[16*12 +: 16];
-    accum[28] <= num1 * num2[16*13 +: 16];
-    accum[29] <= num1 * num2[16*14 +: 16];
-    accum[30] <= num1 * num2[16*15 +: 16];
+    partial_product_lo[0] <= num1[128*0 +: 128] * num2[27*0 +: 27];
+    partial_product_lo[1] <= num1[128*0 +: 128] * num2[27*1 +: 27];
+    partial_product_lo[2] <= num1[128*0 +: 128] * num2[27*2 +: 27];
+    partial_product_lo[3] <= num1[128*0 +: 128] * num2[27*3 +: 27];
+    partial_product_lo[4] <= num1[128*0 +: 128] * num2[27*4 +: 27];
+    partial_product_lo[5] <= num1[128*0 +: 128] * num2[27*5 +: 27];
+    partial_product_lo[6] <= num1[128*0 +: 128] * num2[27*6 +: 27];
+    partial_product_lo[7] <= num1[128*0 +: 128] * num2[27*7 +: 27];
+    partial_product_lo[8] <= num1[128*0 +: 128] * num2[27*8 +: 27];
+    partial_product_lo[9] <= num1[128*0 +: 128] * num2[27*9 +: 13];
 
-    accum[7] <= accum[15] + (accum[16] << (16*1));
-    accum[8] <= accum[17] + (accum[18] << (16*1));
-    accum[9] <= accum[19] + (accum[20] << (16*1));
-    accum[10] <= accum[21] + (accum[22] << (16*1));
-    accum[11] <= accum[23] + (accum[24] << (16*1));
-    accum[12] <= accum[25] + (accum[26] << (16*1));
-    accum[13] <= accum[27] + (accum[28] << (16*1));
-    accum[14] <= accum[29] + (accum[30] << (16*1));
+    num1_saved <= num1;
+    num2_saved <= num2;
 
-    accum[3] <= accum[7] + (accum[8] << (16*2));
-    accum[4] <= accum[9] + (accum[10] << (16*2));
-    accum[5] <= accum[11] + (accum[12] << (16*2));
-    accum[6] <= accum[13] + (accum[14] << (16*2));
+    sum_tree_lo_saved[0] <= sum_tree_lo[0];
+    sum_tree_lo_saved[1] <= sum_tree_lo_saved[0];
 
-    accum[1] <= accum[3] + (accum[4] << (16*4));
-    accum[2] <= accum[5] + (accum[6] << (16*4));
+    partial_product_hi[0] <= num1_saved[128*1 +: 128] * num2_saved[27*0 +: 27];
+    partial_product_hi[1] <= num1_saved[128*1 +: 128] * num2_saved[27*1 +: 27];
+    partial_product_hi[2] <= num1_saved[128*1 +: 128] * num2_saved[27*2 +: 27];
+    partial_product_hi[3] <= num1_saved[128*1 +: 128] * num2_saved[27*3 +: 27];
+    partial_product_hi[4] <= num1_saved[128*1 +: 128] * num2_saved[27*4 +: 27];
+    partial_product_hi[5] <= num1_saved[128*1 +: 128] * num2_saved[27*5 +: 27];
+    partial_product_hi[6] <= num1_saved[128*1 +: 128] * num2_saved[27*6 +: 27];
+    partial_product_hi[7] <= num1_saved[128*1 +: 128] * num2_saved[27*7 +: 27];
+    partial_product_hi[8] <= num1_saved[128*1 +: 128] * num2_saved[27*8 +: 27];
+    partial_product_hi[9] <= num1_saved[128*1 +: 128] * num2_saved[27*9 +: 13];
 
-    accum[0] <= accum[1] + (accum[2] << (16*8));
+    // $strobe("[mult_256_sync.v] sum_tree_lo[0]=%h", sum_tree_lo[0]);
+    // $strobe("[mult_256_sync.v] sum_tree_lo[1]=%h", sum_tree_lo[1]);
+    // $strobe("[mult_256_sync.v] sum_tree_lo[2]=%h", sum_tree_lo[2]);
+    // $strobe("[mult_256_sync.v] sum_tree_lo[3]=%h", sum_tree_lo[3]);
+    // $strobe("[mult_256_sync.v] sum_tree_lo[4]=%h", sum_tree_lo[4]);
+    // $strobe("[mult_256_sync.v] sum_tree_lo[5]=%h", sum_tree_lo[5]);
+    // $strobe("[mult_256_sync.v] sum_tree_lo[6]=%h", sum_tree_lo[6]);
+    // $strobe("[mult_256_sync.v] sum_tree_lo[7]=%h", sum_tree_lo[7]);
+    // $strobe("[mult_256_sync.v] sum_tree_lo[8]=%h", sum_tree_lo[8]);
+    // $strobe("[mult_256_sync.v] sum_tree_lo[9]=%h", sum_tree_lo[9]);
+    // $strobe("[mult_256_sync.v] sum_tree_lo[10]=%h", sum_tree_lo[10]);
+    // $strobe("[mult_256_sync.v] partial_product_lo[0]=%h", partial_product_lo[0]);
+    // $strobe("[mult_256_sync.v] partial_product_lo[1]=%h", partial_product_lo[1]);
+    // $strobe("[mult_256_sync.v] partial_product_lo[2]=%h", partial_product_lo[2]);
+    // $strobe("[mult_256_sync.v] partial_product_lo[3]=%h", partial_product_lo[3]);
+    // $strobe("[mult_256_sync.v] partial_product_lo[4]=%h", partial_product_lo[4]);
+    // $strobe("[mult_256_sync.v] partial_product_lo[5]=%h", partial_product_lo[5]);
+    // $strobe("[mult_256_sync.v] partial_product_lo[6]=%h", partial_product_lo[6]);
+    // $strobe("[mult_256_sync.v] partial_product_lo[7]=%h", partial_product_lo[7]);
+    // $strobe("[mult_256_sync.v] partial_product_lo[8]=%h", partial_product_lo[8]);
+    // $strobe("[mult_256_sync.v] partial_product_lo[9]=%h", partial_product_lo[9]);
 
-    // $strobe("[mult_256_sync.v] accum[0]=%h", accum[0]);
-    // $strobe("[mult_256_sync.v] accum[1]=%h", accum[1]);
-    // $strobe("[mult_256_sync.v] accum[2]=%h", accum[2]);
-    // $strobe("[mult_256_sync.v] accum[3]=%h", accum[3]);
-    // $strobe("[mult_256_sync.v] accum[4]=%h", accum[4]);
-    // $strobe("[mult_256_sync.v] accum[5]=%h", accum[5]);
-    // $strobe("[mult_256_sync.v] accum[6]=%h", accum[6]);
-    // $strobe("[mult_256_sync.v] accum[7]=%h", accum[7]);
-    // $strobe("[mult_256_sync.v] accum[8]=%h", accum[8]);
-    // $strobe("[mult_256_sync.v] accum[9]=%h", accum[9]);
-    // $strobe("[mult_256_sync.v] accum[10]=%h", accum[10]);
-    // $strobe("[mult_256_sync.v] accum[11]=%h", accum[11]);
-    // $strobe("[mult_256_sync.v] accum[12]=%h", accum[12]);
-    // $strobe("[mult_256_sync.v] accum[13]=%h", accum[13]);
-    // $strobe("[mult_256_sync.v] accum[14]=%h", accum[14]);
-    // $strobe("[mult_256_sync.v] accum[15]=%h", accum[15]);
-    // $strobe("[mult_256_sync.v] accum[16]=%h", accum[16]);
-    // $strobe("[mult_256_sync.v] accum[17]=%h", accum[17]);
-    // $strobe("[mult_256_sync.v] accum[18]=%h", accum[18]);
-    // $strobe("[mult_256_sync.v] accum[19]=%h", accum[19]);
-    // $strobe("[mult_256_sync.v] accum[20]=%h", accum[20]);
-    // $strobe("[mult_256_sync.v] accum[21]=%h", accum[21]);
-    // $strobe("[mult_256_sync.v] accum[22]=%h", accum[22]);
-    // $strobe("[mult_256_sync.v] accum[23]=%h", accum[23]);
-    // $strobe("[mult_256_sync.v] accum[24]=%h", accum[24]);
-    // $strobe("[mult_256_sync.v] accum[25]=%h", accum[25]);
-    // $strobe("[mult_256_sync.v] accum[26]=%h", accum[26]);
-    // $strobe("[mult_256_sync.v] accum[27]=%h", accum[27]);
-    // $strobe("[mult_256_sync.v] accum[28]=%h", accum[28]);
-    // $strobe("[mult_256_sync.v] accum[29]=%h", accum[29]);
-    // $strobe("[mult_256_sync.v] accum[30]=%h", accum[30]);
+    // $strobe("[mult_256_sync.v] sum_tree_hi[0]=%h", sum_tree_hi[0]);
+    // $strobe("[mult_256_sync.v] sum_tree_hi[1]=%h", sum_tree_hi[1]);
+    // $strobe("[mult_256_sync.v] sum_tree_hi[2]=%h", sum_tree_hi[2]);
+    // $strobe("[mult_256_sync.v] sum_tree_hi[3]=%h", sum_tree_hi[3]);
+    // $strobe("[mult_256_sync.v] sum_tree_hi[4]=%h", sum_tree_hi[4]);
+    // $strobe("[mult_256_sync.v] sum_tree_hi[5]=%h", sum_tree_hi[5]);
+    // $strobe("[mult_256_sync.v] sum_tree_hi[6]=%h", sum_tree_hi[6]);
+    // $strobe("[mult_256_sync.v] sum_tree_hi[7]=%h", sum_tree_hi[7]);
+    // $strobe("[mult_256_sync.v] sum_tree_hi[8]=%h", sum_tree_hi[8]);
+    // $strobe("[mult_256_sync.v] sum_tree_hi[9]=%h", sum_tree_hi[9]);
+    // $strobe("[mult_256_sync.v] sum_tree_hi[10]=%h", sum_tree_hi[10]);
+    // $strobe("[mult_256_sync.v] partial_product_hi[0]=%h", partial_product_hi[0]);
+    // $strobe("[mult_256_sync.v] partial_product_hi[1]=%h", partial_product_hi[1]);
+    // $strobe("[mult_256_sync.v] partial_product_hi[2]=%h", partial_product_hi[2]);
+    // $strobe("[mult_256_sync.v] partial_product_hi[3]=%h", partial_product_hi[3]);
+    // $strobe("[mult_256_sync.v] partial_product_hi[4]=%h", partial_product_hi[4]);
+    // $strobe("[mult_256_sync.v] partial_product_hi[5]=%h", partial_product_hi[5]);
+    // $strobe("[mult_256_sync.v] partial_product_hi[6]=%h", partial_product_hi[6]);
+    // $strobe("[mult_256_sync.v] partial_product_hi[7]=%h", partial_product_hi[7]);
+    // $strobe("[mult_256_sync.v] partial_product_hi[8]=%h", partial_product_hi[8]);
+    // $strobe("[mult_256_sync.v] partial_product_hi[9]=%h", partial_product_hi[9]);
 end
-
-assign product = accum[0];
 
 endmodule

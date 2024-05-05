@@ -19,30 +19,33 @@
 //  THE SOFTWARE.
 
 
-// Test bench of galois_mult_barrett_sync.v module
-module tb_galois_mult_barrett_sync ();
+// Test bench of galois_add_three.v module
+module tb_galois_add_three ();
+
+// REGS AND WIRES DECLARATIONS
 
 localparam N_BITS = 254;
 
 logic clk;
+logic rst;
+logic en;
 logic [N_BITS-1:0] a;
 logic [N_BITS-1:0] b;
 logic [N_BITS-1:0] c;
-logic ready;
+logic [N_BITS-1:0] d;
 
-`include "galois_mult_test_cases.sv"
+`include "galois_add_three_test_cases.sv"
 
-// Module to be tested.
-galois_mult_barrett_sync MULT (
-	.clk(clk),
+// Add module instantiation.
+galois_add_three #(
+	.N_BITS(N_BITS)
+) GALOIS_ADD (
 	.num1(a),
 	.num2(b),
-	.product(c),
-	.ready(ready)
+	.num3(c),
+	.sum(d)
 );
 
-// Module I/O timing information.
-localparam MULT_LATENCY = 3; // Clock cylces
 
 //-----------------------------------------------------------//
 //
@@ -50,52 +53,21 @@ localparam MULT_LATENCY = 3; // Clock cylces
 //
 //-----------------------------------------------------------//
 
-// CLK
-always begin
-	#1 clk = ~clk;
-end
-
 initial begin
-	clk = 1'b0;
-end
-
-initial begin
-	#1;
-
-	$display("Start (all):%d", $time);
-
+	// Test of addition
+	#1
+	$display("Start:%d", $time);
 	a = test_in1;
 	b = test_in2;
-	$display("Start (1):%d", $time);
-
-	#2;
-
-	a = 1;
-	b = test_in2;
-	$display("Start (2):%d", $time);
-
-	#(2*(3*MULT_LATENCY-1));
-
-	$display("End (1):%d", $time);
-	$display("Result (1)=%h", c);
-	$display("Expected Result (1)=%h", test_out);
-	if (c != test_out) begin
+	c = test_in3;
+	#1
+	$display("End:%d", $time);
+	$display("Result=%h", d);
+	$display("Expected Result=%h", test_out);
+	if (d == test_out)
+		$display("Test Passed");
+	else
 		$display("Test Failed");
-		$stop;
-	end
-
-	#2;
-
-	$display("End (2):%d", $time);
-	$display("Result (2)=%h", c);
-	$display("Expected Result (2)=%h", test_in2);
-	if (c != test_in2) begin
-		$display("Test Failed");
-		$stop;
-	end
-
-	$display("End (all):%d", $time);
-	$display("Test Passed");
 	$stop;
 end
 

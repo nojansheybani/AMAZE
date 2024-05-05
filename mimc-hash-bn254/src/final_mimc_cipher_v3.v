@@ -19,72 +19,24 @@
 //  THE SOFTWARE.
 
 
-// Test bench of mimc_cipher.v module
-module tb_mimc_cipher ();
+// Module that implements MiMC block cipher (exponent = 7, rounds = 91).
 
-// REGS AND WIRES DECLARATIONS
-
-localparam N_BITS = 254;
-
-logic clk;
-logic rst;
-logic en;
-logic [N_BITS-1:0] a;
-logic [N_BITS-1:0] b;
-logic [N_BITS-1:0] c;
-logic done;
-
-`include "mimc_cipher_test_cases.sv"
-
-// Add module instantiation.
-mimc_cipher #(
-	.N_BITS(N_BITS),
-	.GALOIS_MULT_METHOD("barrett"),
-	.GALOIS_POW_7_METHOD("parallel"),
-	.MIMC_CIPHER_ROUND_METHOD("v1")
-) MIMC_CIPHER (
-	.clk(clk),
-	.rst(rst),
-	.en(en),
-	.in(a),
-	.key(b),
-	.out(c),
-	.done(done)
+module final_mimc_cipher_v3 #(
+	parameter N_BITS = 254
+) (
+	input clk,
+	input  [N_BITS-1:0] in,
+	input  [N_BITS-1:0] key,
+	output [N_BITS-1:0] out
 );
 
-
-//-----------------------------------------------------------//
-//
-// Simulation
-//
-//-----------------------------------------------------------//
-
-// CLK
-always begin
-	#1 clk = ~clk;
-end
-
-initial begin
-	clk = 1'b0;
-	#1
-		en = 1'b0;
-		rst = 1'b1;
-	#1 // Test of all rounds of MiMC cipher
-		a = test1_in;
-		b = test1_key;
-	#1
-		$display("Start:%d", $time);
-		rst = 1'b0;
-		en =  1'b1;
-	wait(done);
-	$display("End:%d", $time);
-	$display("Result=%h", c);
-	$display("Expected Result=%h", test1_out);
-	if (c == test1_out)
-		$display("Test Passed");
-	else
-		$display("Test Failed");
-	$stop;
-end
+mimc_cipher_sync_v2 #(
+	.N_BITS(N_BITS)
+) MIMC_CIPHER (
+	.clk(clk),
+	.in(in),
+	.key(key),
+	.out(out)
+);
 
 endmodule

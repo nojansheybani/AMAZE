@@ -6,14 +6,14 @@ module top(
 	input SWITCH3,
 	input SWITCH4,
 	input SWITCH5,
-	
+
 	//LED Outputs
 	output LED1,
 	output LED2,
 	output LED3,
 	output LED4,
 	output LED5,
-	
+
 	//Clock from oscillator
 	input Clock,
 
@@ -26,7 +26,7 @@ module top(
 	input Arduino_A5,
 	input Arduino_A6,
 	input Arduino_A7,
-	
+
 	//Arduino I/Os
 	inout Arduino_IO0,
 	inout Arduino_IO1,
@@ -42,15 +42,15 @@ module top(
 	inout Arduino_IO11,
 	inout Arduino_IO12,
 	inout Arduino_IO13,
-	
+
 	//Reset Pin
 	input RESET_N,
-	
+
 	//JTAG enable
 	input JTAGEN,
-	
-	//There are 40 GPIOs. In this example pins are not used as LVDS pins. 
-	//NOTE: Refer README.txt on how to use these GPIOs with LVDS option. 
+
+	//There are 40 GPIOs. In this example pins are not used as LVDS pins.
+	//NOTE: Refer README.txt on how to use these GPIOs with LVDS option.
 
 	inout DIFFIO_L20N_CLK1N,
 	inout DIFFIO_L20P_CLK1P,
@@ -91,7 +91,7 @@ module top(
 	inout DIFFIO_T4N,
 	inout DIFFIO_T6P,
 	inout DIFFIO_T10P,
-	inout DIFFIO_T10N	
+	inout DIFFIO_T10N
 
 );
 
@@ -103,18 +103,61 @@ assign mimc_in = {{100{SWITCH3}}, {100{SWITCH4}}, {54{SWITCH4}}};
 
 assign LED2 = |(mimc_out);
 
-mimc_cipher #(
-	.N_BITS(254),
-	.GALOIS_MULT_METHOD("peasant"),
-	.GALOIS_POW_7_METHOD("parallel"),
-	.MIMC_CIPHER_ROUND_METHOD("v2")
+// mimc_cipher #(
+// 	.N_BITS(254),
+// 	.GALOIS_MULT_METHOD("barrett"),
+// 	.GALOIS_POW_7_METHOD("parallel"),
+// 	.MIMC_CIPHER_ROUND_METHOD("v1")
+// ) MIMC_CIPHER (
+// 	.clk(Clock),
+// 	.rst(RESET_N),
+// 	.en(SWITCH2),
+// 	.in(mimc_in),
+// 	.out(mimc_out),
+// 	.done(LED1)
+// );
+
+mimc_cipher_sync_v2 #(
+	.N_BITS(254)
 ) MIMC_CIPHER (
 	.clk(Clock),
-	.rst(RESET_N),
-	.en(SWITCH2),
 	.in(mimc_in),
-	.out(mimc_out),
-	.done(LED1)
+	.out(mimc_out)
 );
+
+// galois_mult #(
+// 	.N_BITS(254),
+// 	.GALOIS_MULT_METHOD("peasant")
+// ) GALOIS_MULT (
+// 	.clk(Clock),
+// 	.rst(RESET_N),
+// 	.en(SWITCH2),
+// 	.num1(mimc_in),
+// 	.num2(mimc_in),
+// 	.product(mimc_out),
+// 	.done(LED1)
+// );
+
+// mult_256_sync MULT (
+// 	.clk(Clock),
+// 	.num1(mimc_in),
+// 	.num2(mimc_in),
+// 	.product(mimc_out)
+// );
+
+// galois_mult_barrett_sync MULT (
+// 	.clk(Clock),
+// 	.num1(mimc_in),
+// 	.num2(mimc_in),
+// 	.product(mimc_out),
+// 	.ready(LED1)
+// );
+
+// galois_mult_barrett_sync_v2 MULT (
+// 	.clk(Clock),
+// 	.num1(mimc_in),
+// 	.num2(mimc_in),
+// 	.product(mimc_out)
+// );
 
 endmodule

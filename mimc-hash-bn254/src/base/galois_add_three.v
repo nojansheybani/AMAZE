@@ -19,72 +19,24 @@
 //  THE SOFTWARE.
 
 
-// Test bench of mimc_cipher.v module
-module tb_mimc_cipher ();
-
-// REGS AND WIRES DECLARATIONS
-
-localparam N_BITS = 254;
-
-logic clk;
-logic rst;
-logic en;
-logic [N_BITS-1:0] a;
-logic [N_BITS-1:0] b;
-logic [N_BITS-1:0] c;
-logic done;
-
-`include "mimc_cipher_test_cases.sv"
-
-// Add module instantiation.
-mimc_cipher #(
-	.N_BITS(N_BITS),
-	.GALOIS_MULT_METHOD("barrett"),
-	.GALOIS_POW_7_METHOD("parallel"),
-	.MIMC_CIPHER_ROUND_METHOD("v1")
-) MIMC_CIPHER (
-	.clk(clk),
-	.rst(rst),
-	.en(en),
-	.in(a),
-	.key(b),
-	.out(c),
-	.done(done)
+// Module that performs addition between three elements in Galois Field with Prime order
+module galois_add_three #(
+	parameter N_BITS = 254,
+	parameter PRIME_MODULUS = 254'h30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001 // Size: N_BITS
+) (
+	input  [N_BITS-1:0] num1,
+	input  [N_BITS-1:0] num2,
+	input  [N_BITS-1:0] num3,
+	output [N_BITS-1:0] sum
 );
 
+wire [(N_BITS+2)-1:0] temp;
+wire signed [(N_BITS+2)-1:0] temp1;
+wire signed [(N_BITS+2)-1:0] temp2;
 
-//-----------------------------------------------------------//
-//
-// Simulation
-//
-//-----------------------------------------------------------//
-
-// CLK
-always begin
-	#1 clk = ~clk;
-end
-
-initial begin
-	clk = 1'b0;
-	#1
-		en = 1'b0;
-		rst = 1'b1;
-	#1 // Test of all rounds of MiMC cipher
-		a = test1_in;
-		b = test1_key;
-	#1
-		$display("Start:%d", $time);
-		rst = 1'b0;
-		en =  1'b1;
-	wait(done);
-	$display("End:%d", $time);
-	$display("Result=%h", c);
-	$display("Expected Result=%h", test1_out);
-	if (c == test1_out)
-		$display("Test Passed");
-	else
-		$display("Test Failed");
-	$stop;
-end
+assign temp = num1 + num2 + num3;
+assign temp1 = temp - PRIME_MODULUS;
+assign temp2 = temp - 2*PRIME_MODULUS;
+assign sum = temp2 >= 0 ? temp2[N_BITS-1:0] : temp1 >= 0 ? temp1[N_BITS-1:0] : temp[N_BITS-1:0];
 
 endmodule
